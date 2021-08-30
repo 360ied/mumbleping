@@ -39,6 +39,8 @@ func main() {
 	}
 	defer conn.Close()
 
+	startTime := time.Now()
+
 	if _, err := conn.Write(packetBuf.Bytes()); err != nil {
 		panic(err)
 	}
@@ -74,6 +76,8 @@ read:
 		goto read
 	}
 
+	endTime := time.Now()
+
 	// version is represented by 4 uint8
 	versionStr := ""
 	for _, b := range version {
@@ -85,5 +89,5 @@ read:
 		}
 	}
 
-	fmt.Printf("-----Ping-----\nVersion: %s\nUsers: %d/%d\nAllowed Bandwidth: %d\n--------------\n", versionStr, userC, maxUserC, allowedBandwith)
+	fmt.Printf("-----Ping-----\nVersion: %s\nUsers: %d/%d\nAllowed Bandwidth: %d\nLatency: %s\n--------------\n", versionStr, userC, maxUserC, allowedBandwith, endTime.Sub(startTime).String())
 }
