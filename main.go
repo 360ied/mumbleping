@@ -3,7 +3,9 @@ package main
 import (
 	"bytes"
 	cryptorand "crypto/rand"
+	"encoding/binary"
 	"flag"
+	"fmt"
 	"log"
 	"net"
 	"time"
@@ -40,6 +42,8 @@ func main() {
 		panic(err)
 	}
 
+read:
+
 	const recvL = 24 // ping response packet is 24 bytes long
 
 	recvBuf := make([]byte, recvL)
@@ -51,7 +55,8 @@ func main() {
 		panic(err)
 	}
 	if n < recvL {
-		log.Panicf("Short read! Read %d bytes but expected %d bytes", n, recvL)
+		log.Printf("[ERROR] Short read! Read %d bytes but expected %d bytes", n, recvL)
+		goto read
 	}
 
 	r := bytes.NewReader(recvBuf)
@@ -62,5 +67,10 @@ func main() {
 	maxUserC, _ := ReadUint32(r)
 	allowedBandwith, _ := ReadUint32(r)
 
-	log.Printf("\nPing:\nVersion: %d\nIdent: %d\nUsers: %d/%d\nAllowed Bandwidth:%d\n", version, ident, userC, maxUserC, allowedBandwith)
+	if ident != binary.BigEndian.Uint64(identBuf) {
+		log.Printf("[ERROR] Wrong ident on ping recv, retrying...")
+		goto read
+	}
+
+	fmt.Printf("-----Ping-----\nVersion: %d\nIdent: %d\nUsers: %d/%d\nAllowed Bandwidth: %d\n--------------\n", version, ident, userC, maxUserC, allowedBandwith)
 }
