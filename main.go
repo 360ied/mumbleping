@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strconv"
 	"time"
 )
 
@@ -22,7 +23,7 @@ func main() {
 		log.Fatalf("Args Error: IP Address not provided.")
 	}
 
-	packetBuf := &bytes.Buffer{}
+	packetBuf := new(bytes.Buffer)
 
 	packetBuf.Write([]byte{0x00, 0x00, 0x00, 0x00})
 
@@ -61,7 +62,8 @@ read:
 
 	r := bytes.NewReader(recvBuf)
 
-	version, _ := ReadUint32(r)
+	version := make([]byte, 4)
+	r.Read(version)
 	ident, _ := ReadUint64(r)
 	userC, _ := ReadUint32(r)
 	maxUserC, _ := ReadUint32(r)
@@ -72,5 +74,15 @@ read:
 		goto read
 	}
 
-	fmt.Printf("-----Ping-----\nVersion: %d\nUsers: %d/%d\nAllowed Bandwidth: %d\n--------------\n", version, userC, maxUserC, allowedBandwith)
+	versionStr := ""
+	for _, b := range version {
+		if b != 0 {
+			if versionStr != "" {
+				versionStr += "."
+			}
+			versionStr += strconv.FormatInt(int64(b), 10)
+		}
+	}
+
+	fmt.Printf("-----Ping-----\nVersion: %s\nUsers: %d/%d\nAllowed Bandwidth: %d\n--------------\n", versionStr, userC, maxUserC, allowedBandwith)
 }
