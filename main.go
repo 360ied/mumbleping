@@ -74,6 +74,7 @@ read:
 		goto read
 	}
 
+	// version is represented by 4 uint8
 	versionStr := ""
 	for _, b := range version {
 		if b != 0 {
