@@ -48,7 +48,7 @@ read:
 
 	recvBuf := make([]byte, recvL)
 
-	conn.SetReadDeadline(time.Now().Add(time.Duration(time.Second * time.Duration(timeout))))
+	conn.SetReadDeadline(time.Now().Add(time.Duration(time.Millisecond * time.Duration(timeout))))
 
 	n, err := conn.Read(recvBuf)
 	if err != nil {
