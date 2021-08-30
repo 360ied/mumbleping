@@ -1,5 +1,66 @@
 package main
 
-func main() {
+import (
+	"bytes"
+	cryptorand "crypto/rand"
+	"flag"
+	"log"
+	"net"
+	"time"
+)
 
+func main() {
+	var timeout int64
+	flag.Int64Var(&timeout, "timeout", 1000, "Ping timeout in milliseconds")
+
+	flag.Parse()
+
+	ip := flag.Arg(0)
+	if ip == "" {
+		log.Fatalf("Args Error: IP Address not provided.")
+	}
+
+	packetBuf := &bytes.Buffer{}
+
+	packetBuf.Write([]byte{0x00, 0x00, 0x00, 0x00})
+
+	identBuf := make([]byte, 8)
+	if _, err := cryptorand.Read(identBuf); err != nil {
+		panic(err)
+	}
+	packetBuf.Write(identBuf)
+
+	conn, err := net.Dial("udp", ip)
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
+
+	if _, err := conn.Write(packetBuf.Bytes()); err != nil {
+		panic(err)
+	}
+
+	const recvL = 24 // ping response packet is 24 bytes long
+
+	recvBuf := make([]byte, recvL)
+
+	conn.SetReadDeadline(time.Now().Add(time.Duration(time.Second * time.Duration(timeout))))
+
+	n, err := conn.Read(recvBuf)
+	if err != nil {
+		panic(err)
+	}
+	if n < recvL {
+		log.Panicf("Short read! Read %d bytes but expected %d bytes", n, recvL)
+	}
+
+	r := bytes.NewReader(recvBuf)
+
+	version, _ := ReadUint32(r)
+	ident, _ := ReadUint64(r)
+	userC, _ := ReadUint32(r)
+	maxUserC, _ := ReadUint32(r)
+	allowedBandwith, _ := ReadUint32(r)
+
+	log.Printf("\nPing:\nVersion: %d\nIdent: %d\nUsers: %d/%d\nAllowed Bandwidth:%d\n", version, ident, userC, maxUserC, allowedBandwith)
 }
