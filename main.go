@@ -72,5 +72,5 @@ read:
 		goto read
 	}
 
-	fmt.Printf("-----Ping-----\nVersion: %d\nIdent: %d\nUsers: %d/%d\nAllowed Bandwidth: %d\n--------------\n", version, ident, userC, maxUserC, allowedBandwith)
+	fmt.Printf("-----Ping-----\nVersion: %d\nUsers: %d/%d\nAllowed Bandwidth: %d\n--------------\n", version, userC, maxUserC, allowedBandwith)
 }
