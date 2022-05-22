@@ -4,6 +4,7 @@ import (
 	"bytes"
 	cryptorand "crypto/rand"
 	"encoding/binary"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -14,7 +15,9 @@ import (
 
 func main() {
 	var timeout int64
+	var outJson bool
 	flag.Int64Var(&timeout, "timeout", 1000, "Ping timeout in milliseconds")
+	flag.BoolVar(&outJson, "json", false, "Output in JSON")
 
 	flag.Parse()
 
@@ -69,7 +72,7 @@ read:
 	ident, _ := ReadUint64(r)
 	userC, _ := ReadUint32(r)
 	maxUserC, _ := ReadUint32(r)
-	allowedBandwith, _ := ReadUint32(r)
+	allowedBandwidth, _ := ReadUint32(r)
 
 	if ident != binary.BigEndian.Uint64(identBuf) {
 		log.Printf("[ERROR] Wrong ident on ping recv, retrying...")
@@ -89,5 +92,22 @@ read:
 		}
 	}
 
-	fmt.Printf("-----Ping-----\nVersion: %s\nUsers: %d/%d\nAllowed Bandwidth: %d\nLatency: %s\n--------------\n", versionStr, userC, maxUserC, allowedBandwith, endTime.Sub(startTime).String())
+	if outJson {
+		outJ, err := json.MarshalIndent(map[string]interface{}{
+			"version":           versionStr,
+			"user_c":            userC,
+			"max_user_c":        maxUserC,
+			"allowed_bandwidth": allowedBandwidth,
+			"latency":           endTime.Sub(startTime).String(),
+		}, "", "\t")
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Printf("%s\n", outJ)
+	} else {
+		fmt.Printf(
+			"-----Ping-----\nVersion: %s\nUsers: %d/%d\nAllowed Bandwidth: %d\nLatency: %s\n--------------\n",
+			versionStr, userC, maxUserC, allowedBandwidth, endTime.Sub(startTime).String())
+	}
 }
