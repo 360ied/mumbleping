@@ -12,6 +12,13 @@ import (
 	"github.com/TheCreeper/go-notify"
 )
 
+// taken from
+// http://cavaliercoder.com/blog/optimized-abs-for-int64-in-go.html
+func Int64Abs(n int64) int64 {
+	y := n >> 63
+	return (n ^ y) - y
+}
+
 func main() {
 	var timeout int64
 	var outJson bool
@@ -28,7 +35,7 @@ func main() {
 	}
 
 	// previous result
-	// pRes := mping.PingResult{}
+	pRes := mping.PingResult{}
 	pUp := false
 
 	up := false
@@ -82,10 +89,33 @@ start:
 		if _, err := ntf.Show(); err != nil {
 			panic(err)
 		}
+	} else if res.UserC != pRes.UserC {
+		joinS := ""
+		if res.UserC > pRes.UserC {
+			joinS = "joined"
+		} else {
+			joinS = "left"
+		}
+
+		userCDiff := int64(res.UserC) - int64(pRes.UserC)
+		diffAbs := Int64Abs(userCDiff)
+
+		pluralS := ""
+		if diffAbs > 1 {
+			pluralS = "s"
+		}
+
+		ntf := notify.NewNotification(
+			fmt.Sprintf("mping: %d user%s %s %s.", diffAbs, pluralS, joinS, ip),
+			fmt.Sprintf("%d/%d users connected.", res.UserC, res.MaxUserC))
+
+		if _, err := ntf.Show(); err != nil {
+			panic(err)
+		}
 	}
 
 	time.Sleep(2 * time.Second)
-	// pRes = res
+	pRes = res
 	pUp = up
 	goto start
 }
