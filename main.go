@@ -46,7 +46,7 @@ start:
 	if !up && !watch {
 		log.Printf(
 			"[ERROR] Ping returned an error, this probably means the Mumble server is not up: %s",
-			err)
+			err.Error())
 		os.Exit(1)
 	}
 	if outJson {
