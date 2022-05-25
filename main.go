@@ -2,9 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
+	mathrand "math/rand"
 	"mumbleping/mping"
 	"os"
 	"time"
@@ -32,11 +34,18 @@ func main() {
 	var timeout int64
 	var outJson bool
 	var watch bool
+	var faultChance float64
 	flag.Int64Var(&timeout, "timeout", 1000, "Ping timeout in milliseconds")
 	flag.BoolVar(&outJson, "json", false, "Output in JSON")
 	flag.BoolVar(&watch, "watch", false, "Watch the Mumble server and show notifications")
+	flag.Float64Var(&faultChance, "fault-chance", 0,
+		"Chance for randomly injecting a fault into the ping mechanism (valid values range from 0.0 to 1.0)")
 
 	flag.Parse()
+
+	if faultChance < 0 || faultChance > 1 {
+		log.Fatalf("Args Error: -fault-chance's value isn't between 0.0 and 1.0")
+	}
 
 	ip := flag.Arg(0)
 	if ip == "" {
@@ -46,12 +55,16 @@ func main() {
 	// previous result
 	pRes := mping.PingResult{}
 	pUp := false
+	retry := false
 
 	up := false
 
 start:
 
 	res, err := mping.Ping(log.Default(), ip, timeout)
+	if faultChance != 0 && faultChance < mathrand.Float64() {
+		err = errors.New("fault injection")
+	}
 	if err != nil {
 		up = false
 		res = mping.PingResult{}
@@ -86,8 +99,27 @@ start:
 
 watchSkip:
 
+	if retry {
+		if up {
+			log.Printf("[INFO] Retry succeeded. The server is not actually down.")
+			retry = false
+			goto retrySkip
+		} else {
+			log.Printf("[INFO] Retry failed. The server is most likely actually down.")
+			retry = false
+		}
+	}
+
 	// up status has changed
 	if up != pUp {
+		if !up && pUp {
+			// the ping packet might've just been lost in transit
+			// try again to be more sure
+			log.Printf("[INFO] The last ping was not responded to but the last last ping was. The ping packet might've been lost in transit. Retrying to make sure the server is actually down...")
+			retry = true
+			goto retrySkip
+		}
+
 		statusS := ""
 		if up {
 			statusS = "up"
@@ -119,6 +151,7 @@ watchSkip:
 			fmt.Sprintf("%d/%d users connected", res.UserC, res.MaxUserC))
 	}
 
+retrySkip:
 	time.Sleep(2 * time.Second)
 	pRes = res
 	pUp = up
