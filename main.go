@@ -30,6 +30,19 @@ func sendNotif(title, description string) {
 	}
 }
 
+func sendServerStatus(up bool, res mping.PingResult, ip string) {
+	statusS := ""
+	if up {
+		statusS = "up"
+	} else {
+		statusS = "down"
+	}
+
+	sendNotif(
+		fmt.Sprintf("%s is now %s", ip, statusS),
+		fmt.Sprintf("%d/%d users connected", res.UserC, res.MaxUserC))
+}
+
 func main() {
 	var timeout int64
 	var outJson bool
@@ -107,6 +120,7 @@ watchSkip:
 		} else {
 			log.Printf("[INFO] Retry failed. The server is most likely actually down.")
 			retry = false
+			sendServerStatus(up, res, ip)
 		}
 	}
 
@@ -120,16 +134,7 @@ watchSkip:
 			goto retrySkip
 		}
 
-		statusS := ""
-		if up {
-			statusS = "up"
-		} else {
-			statusS = "down"
-		}
-
-		sendNotif(
-			fmt.Sprintf("%s is now %s", ip, statusS),
-			fmt.Sprintf("%d/%d users connected", res.UserC, res.MaxUserC))
+		sendServerStatus(up, res, ip)
 	} else if res.UserC != pRes.UserC {
 		joinS := ""
 		if res.UserC > pRes.UserC {
