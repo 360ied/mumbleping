@@ -19,6 +19,15 @@ func Int64Abs(n int64) int64 {
 	return (n ^ y) - y
 }
 
+func sendNotif(title, description string) {
+	log.Printf("[STATUS]\n%s\n%s", title, description)
+
+	ntf := notify.NewNotification(title, description)
+	if _, err := ntf.Show(); err != nil {
+		log.Printf("[ERROR] Could not show notification: %s", err.Error())
+	}
+}
+
 func main() {
 	var timeout int64
 	var outJson bool
@@ -50,7 +59,11 @@ start:
 		up = true
 	}
 
-	if !up && !watch {
+	if watch {
+		goto watchSkip
+	}
+
+	if !up {
 		log.Printf(
 			"[ERROR] Ping returned an error, this probably means the Mumble server is not up: %s",
 			err.Error())
@@ -69,9 +82,9 @@ start:
 			res.Version, res.UserC, res.MaxUserC, res.AllowedBandwidth, res.Latency.String())
 	}
 
-	if !watch {
-		return
-	}
+	os.Exit(0)
+
+watchSkip:
 
 	// up status has changed
 	if up != pUp {
@@ -82,13 +95,9 @@ start:
 			statusS = "down"
 		}
 
-		ntf := notify.NewNotification(
-			fmt.Sprintf("mping: %s is now %s.", ip, statusS),
-			fmt.Sprintf("%d/%d users connected.", res.UserC, res.MaxUserC))
-
-		if _, err := ntf.Show(); err != nil {
-			panic(err)
-		}
+		sendNotif(
+			fmt.Sprintf("%s is now %s", ip, statusS),
+			fmt.Sprintf("%d/%d users connected", res.UserC, res.MaxUserC))
 	} else if res.UserC != pRes.UserC {
 		joinS := ""
 		if res.UserC > pRes.UserC {
@@ -105,13 +114,9 @@ start:
 			pluralS = "s"
 		}
 
-		ntf := notify.NewNotification(
-			fmt.Sprintf("mping: %d user%s %s %s.", diffAbs, pluralS, joinS, ip),
-			fmt.Sprintf("%d/%d users connected.", res.UserC, res.MaxUserC))
-
-		if _, err := ntf.Show(); err != nil {
-			panic(err)
-		}
+		sendNotif(
+			fmt.Sprintf("%d user%s %s %s", diffAbs, pluralS, joinS, ip),
+			fmt.Sprintf("%d/%d users connected", res.UserC, res.MaxUserC))
 	}
 
 	time.Sleep(2 * time.Second)
